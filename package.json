@@ -12,17 +12,37 @@
     "test": "node --test tests/*.test.mjs",
     "test:ui": "vitest run",
     "check": "npm test && npm run test:ui && npm run build",
-    "e2e": "node tests/browser-e2e.mjs"
+    "e2e": "node tests/browser-e2e.mjs",
+    "e2e:blank": "node tests/browser-blank-boot.mjs",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:import-sqlite": "node scripts/import-sqlite.mjs"
   },
-  "files": ["server.mjs", "server", "shared", "client", "dist", "vite.config.js", ".env.example", "README.md", "CHANGELOG-react.md"],
+  "files": [
+    "server.mjs",
+    "server",
+    "shared",
+    "client",
+    "api",
+    "migrations",
+    "scripts",
+    "dist",
+    "vercel.json",
+    "vite.config.js",
+    ".env.example",
+    "README.md",
+    "VERCEL-SETUP.md",
+    "CHANGELOG-react.md"
+  ],
   "engines": {
-    "node": ">=26"
+    "node": "26.x"
   },
   "dependencies": {
+    "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.12",

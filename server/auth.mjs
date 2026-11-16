@@ -52,22 +52,17 @@ export function makeHasher({scrypt = {}, concurrency = 2, maxQueue = 20} = {}) {
 
 export const sha256 = t => crypto.createHash('sha256').update(t).digest();
 
-export function makeSessions({db, tx, now, cookieSecure}) {
+export function makeSessions({store, now, cookieSecure}) {
   const NAME = cookieSecure ? '__Host-jenius_sid' : 'jenius_sid';
   const cookieStr = (token, maxAge) => `${NAME}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${cookieSecure ? '; Secure' : ''}`;
-  const q = {
-    ins: db.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at,last_seen) VALUES(?,?,?,?,?)'),
-    get: db.prepare('SELECT s.user_id,s.expires_at,s.last_seen,u.username FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?'),
-    del: db.prepare('DELETE FROM sessions WHERE token_hash=?'),
-    touch: db.prepare('UPDATE sessions SET last_seen=?,expires_at=? WHERE token_hash=?'),
-    purge: db.prepare('DELETE FROM sessions WHERE expires_at<=?'),
-    cap: db.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash NOT IN (SELECT token_hash FROM sessions WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT 10)')
-  };
   return {
     cookieStr, NAME,
-    create(userId) { // каждый вход — новый токен; в БД только sha256
+    // Вызывать внутри транзакции: repo — репозиторий этой транзакции. Блокировка строки игрока не даёт двум входам
+    // одновременно «подрезать» список сессий (максимум 10 на игрока).
+    async create(userId, repo) { // каждый вход — новый токен; в БД только sha256
       const token = crypto.randomBytes(32).toString('base64url'), t = now();
-      q.purge.run(t); q.ins.run(sha256(token), userId, t, t + SESSION_MS, t); q.cap.run(userId, userId);
+      await repo.lockUser(userId);
+      await repo.purgeSessions(t); await repo.insSession(sha256(token), userId, t, t + SESSION_MS); await repo.capSessions(userId);
       return {token, cookie: cookieStr(token, SESSION_MS / 1000)};
     },
     tokenFrom(req) {
@@ -77,17 +72,19 @@ export function makeSessions({db, tx, now, cookieSecure}) {
       }
       return null;
     },
-    // -> {userId, username, cookie?} | null
-    lookup(token) {
+    // -> {userId, username, cookie?} | null. Каждый шаг — один SQL-запрос; повторы (два запроса сразу) безопасны:
+    // продление и удаление просроченной сессии идемпотентны.
+    async lookup(token) {
       if (!token) return null;
-      const h = sha256(token), row = q.get.get(h), t = now();
+      const h = sha256(token), row = await store.repo.session(h), t = now();
       if (!row) return null;
-      if (row.expires_at <= t) { q.del.run(h); return null; }
+      const expires = Number(row.expires_at), seen = Number(row.last_seen);
+      if (expires <= t) { await store.repo.delSession(h); return null; }
       let cookie;
-      if (t - row.last_seen > TOUCH_MS) { q.touch.run(t, t + SESSION_MS, h); cookie = cookieStr(token, SESSION_MS / 1000); }
-      return {userId: row.user_id, username: row.username, cookie};
+      if (t - seen > TOUCH_MS) { await store.repo.touchSession(t, t + SESSION_MS, h); cookie = cookieStr(token, SESSION_MS / 1000); }
+      return {userId: Number(row.user_id), username: row.username, cookie};
     },
-    destroy(token) { if (token) q.del.run(sha256(token)); },
+    async destroy(token) { if (token) await store.repo.delSession(sha256(token)); },
     clearCookie: () => cookieStr('', 0)
   };
 }
@@ -127,14 +124,17 @@ export function makeLimiter(now, maxKeys = 5000) {
   };
 }
 
-export function makeHostCheck({allowedHosts = [], getPort}) {
+// Host/Origin. По умолчанию (локально): 127.0.0.1/localhost/[::1] с портом сервера + ALLOWED_HOSTS.
+// Vercel: local=false (только явный список, без localhost), httpsOnly=true (Origin обязан быть https://).
+// Точное совпадение: никаких подстановок вроде *.vercel.app.
+export function makeHostCheck({allowedHosts = [], getPort = () => 0, local = true, httpsOnly = false}) {
   const extra = allowedHosts.map(h => h.toLowerCase());
-  const hosts = () => { const p = getPort(); return new Set([`127.0.0.1:${p}`, `localhost:${p}`, `[::1]:${p}`, ...extra]); };
+  const hosts = () => { const p = getPort(); return new Set([...(local ? [`127.0.0.1:${p}`, `localhost:${p}`, `[::1]:${p}`] : []), ...extra]); };
   return {
     hostOk: req => hosts().has(String(req.headers.host || '').toLowerCase()),
     originOk: req => { // Origin обязателен для POST и должен быть http(s):// + разрешённый хост
       const o = String(req.headers.origin || '').toLowerCase(); if (!o) return false;
-      const set = hosts(); return [...set].some(h => o === `http://${h}` || o === `https://${h}`);
+      const set = hosts(); return [...set].some(h => o === `https://${h}` || (!httpsOnly && o === `http://${h}`));
     }
   };
 }

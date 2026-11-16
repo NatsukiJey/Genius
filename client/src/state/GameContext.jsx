@@ -12,6 +12,14 @@ export const browserEnv = () => ({
   getPath: () => window.location.pathname
 });
 
+// Понятная причина для экрана «нет связи»: сообщение сервера (например, про DATABASE_URL) или описание неправильного ответа.
+export function problemOf(r) {
+  if (r.status === 0) return 'Server javob bermadi (tarmoq xatosi yoki vaqt tugadi).';
+  if (r.data && typeof r.data.error === 'string') return `${r.data.error} (HTTP ${r.status})`;
+  if (r.nonJson) return `/api/me JSON o‘rniga boshqa narsa (ehtimol HTML sahifa) qaytardi, HTTP ${r.status}. API manzili yoki Vercel sozlamalarini tekshiring.`;
+  return `/api/me kutilmagan javob qaytardi, HTTP ${r.status}.`;
+}
+
 export function GameProvider({env, children}) {
   const [ctx] = useState(() => {
     const e = env || browserEnv(), store = createGameStore();
@@ -24,11 +32,13 @@ export function GameProvider({env, children}) {
   // Первый запуск: кто я? 401 -> форма входа, нет сети -> экран «aloqa yo‘q», иначе приложение.
   const boot = useCallback(async () => {
     const r = await api.me(true);
-    if (r.netError) { store.set({phase: 'offline'}); return; }
+    if (r.netError) { store.set({phase: 'offline', problem: problemOf(r)}); return; }
     if (r.status === 401) {
       if (!isAuthPath(getPath())) { navigate.replace('/login'); return; }
       store.set({phase: 'auth'}); return;
     }
+    // 200/404/403... без JSON-пользователя — это не наш API (HTML-страница вместо /api, неверный rewrite): честный экран, не «пустое приложение».
+    if (r.status >= 400 || !r.data || !r.data.user || !r.data.state) { store.set({phase: 'offline', problem: problemOf(r)}); return; }
     store.set({user: r.data.user});
     if (isAuthPath(getPath())) { navigate.replace('/'); return; }
     store.set({phase: 'ready'});

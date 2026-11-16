@@ -29,3 +29,10 @@
 - Репозиторий git сейчас — вся домашняя папка; перед публикацией нужен отдельный `git init` в проекте.
 - Права на `background.mp3` (3,4 МБ) не проверены. Лимиты входа хранятся в памяти и сбрасываются при перезапуске.
 - `render.yaml` не запускался на Render.
+
+## Vercel-совместимость (16.11.2026)
+- Общее ядро API вынесено из `server.mjs` в `server/app.mjs`; хранилище подключается как адаптер: `server/store-sqlite.mjs` (локально, мьютекс вокруг await в транзакциях) и `server/store-pg.mjs` (pg.Pool). Весь SQL — `server/repo.mjs` (один код для двух баз); игровые правила по-прежнему только в `server/game.mjs` (теперь async, с блокировкой строки игрока `FOR UPDATE`).
+- `api/index.mjs` → `server/vercel.mjs`: Node-функция без `listen`, без записи на диск и без `node:sqlite`; без `DATABASE_URL` — честный 503; Host/Origin по явному списку (`ALLOWED_HOSTS` + `VERCEL_*`), IP из `x-real-ip` (IPv6 → /64), Secure-cookie по умолчанию.
+- Счётчики попыток в PostgreSQL (`throttle_events`, advisory-lock) — общие для всех экземпляров функции; локально остаются в памяти.
+- `migrations/001_init.sql` + `npm run db:migrate` (вручную, с advisory-lock и `schema_migrations`); необязательный `npm run db:import-sqlite`.
+- `vercel.json` (Vite, `dist`, `/api/*` раньше SPA-fallback), `VERCEL-SETUP.md`, `engines.node` = `26.x`, новые зависимости `pg` и (dev) `@electric-sql/pglite`.

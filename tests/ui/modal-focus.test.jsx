@@ -5,7 +5,10 @@ import {fakeServer, renderApp, screen, waitFor, payload, lessonOf, stateWith, mo
 
 async function openLesson(index = 2) {
   const st = stateWith('en', 0), srv = fakeServer({'GET /api/me': () => ({data: payload(st, lessonOf({index, correct: index}))}), 'POST /api/lesson/answer': () => ({data: {...payload(st), result: {correct: true, outcome: 'continue'}}})});
-  const r = renderApp(); const d = await screen.findByRole('dialog', {name: 'Dars'}); return {...r, srv, d, st};
+  const r = renderApp(); const d = await screen.findByRole('dialog', {name: 'Dars'});
+  // дождаться устойчивого DOM: иначе тест держит кнопки, которые React ещё успевает пересоздать
+  await waitFor(() => { const a = focusables(d); return new Promise(res => setTimeout(res, 30)).then(() => { const b = focusables(d); expect(b.length).toBe(a.length); b.forEach((el, i) => expect(el).toBe(a[i])); }); });
+  return {...r, srv, d, st};
 }
 const names = els => els.map(e => e.getAttribute('aria-label') || e.id || e.getAttribute('data-action') || e.textContent.trim());
 

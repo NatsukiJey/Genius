@@ -11,13 +11,13 @@ export function createApi({store, navigate, channel = null, getPath = () => wind
       const init = {method: body === undefined ? 'GET' : 'POST', headers: body === undefined ? {} : {'Content-Type': 'application/json'}, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin'};
       if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') init.signal = AbortSignal.timeout(10000);
       const r = await fetch(path, init);
-      let data = {}; try { data = await r.json(); } catch {}
-      if (r.status >= 500) { store.set({netDown: true}); return {status: r.status, data, netError: true}; }
+      let data = {}, nonJson = false; try { data = await r.json(); } catch { nonJson = true; }
+      if (r.status >= 500) { store.set({netDown: true}); return {status: r.status, data, netError: true, nonJson}; }
       store.set({netDown: false});
-      if (r.status === 401 && !quiet && !isAuthPath(getPath())) { navigate.replace('/login'); return {status: 401, data}; }
+      if (r.status === 401 && !quiet && !isAuthPath(getPath())) { navigate.replace('/login'); return {status: 401, data, nonJson}; }
       store.apply(data);
       if (r.ok && body !== undefined && !SILENT.has(path)) channel?.postMessage('changed');
-      return {status: r.status, data};
+      return {status: r.status, data, nonJson};
     } catch { store.set({netDown: true}); return {status: 0, data: {}, netError: true}; }
   }
   return {call};

@@ -1,5 +1,6 @@
 // Игровая логика на сервере. Браузер присылает только намерения; состояние меняет только этот модуль.
-// Все функции синхронные и вызываются внутри tx() — никаких await.
+// Все функции асинхронные и получают repo ТРАНЗАКЦИИ первым аргументом (store.tx). Это единственный источник игровых правил
+// и для SQLite, и для PostgreSQL. Строка игрока читается под блокировкой (load): награды и траты не теряются и не удваиваются.
 import crypto from 'node:crypto';
 import {courseQuestions, isCourse, EXAM_PASS} from '../shared/data.mjs';
 import {settle, loseHeart, completeLevel, buy, dayKey, upgradeState, viewState, RETRY_MS} from '../shared/engine.mjs';
@@ -10,45 +11,36 @@ const ok = body => ({status: 200, body});
 const bad = (status, error, extra = {}) => ({status, error, extra});
 const isInt = (n, lo, hi) => Number.isInteger(n) && n >= lo && n <= hi;
 
-export function makeGame({db}) {
-  const sql = {
-    prog: db.prepare('SELECT state,rev FROM progress WHERE user_id=?'),
-    saveProg: db.prepare('UPDATE progress SET state=?,rev=rev+1,updated_at=? WHERE user_id=?'),
-    insProg: db.prepare('INSERT INTO progress(user_id,state,rev,updated_at) VALUES(?,?,1,?)'),
-    lesson: db.prepare('SELECT * FROM lessons WHERE user_id=?'),
-    delLesson: db.prepare('DELETE FROM lessons WHERE user_id=?'),
-    insLesson: db.prepare('INSERT INTO lessons(id,user_id,course,tier,level,exam,idx,correct,mistakes,phase,last_answer,started_at,touched_at) VALUES(?,?,?,?,?,?,0,0,0,?,NULL,?,?)'),
-    saveLesson: db.prepare('UPDATE lessons SET idx=?,correct=?,mistakes=?,phase=?,last_answer=?,touched_at=? WHERE id=?')
-  };
+export function makeGame() {
   const lessonView = r => r && {id: r.id, course: r.course, tier: r.tier, level: r.level, exam: !!r.exam, phase: r.phase, index: r.idx, total: r.exam ? 10 : 5, correct: r.correct, mistakes: r.mistakes};
 
-  function load(userId, now) {
-    const p = sql.prog.get(userId), before = p.state, state = upgradeState(JSON.parse(before));
-    let row = sql.lesson.get(userId);
+  async function load(repo, userId, now) {
+    const p = await repo.progress(userId), before = p.state, state = upgradeState(JSON.parse(before));
+    let row = await repo.lesson(userId);
     settle(state, now);
     if (row && row.exam && row.phase === 'quiz' && now - row.touched_at > STALE_EXAM_MS) { // брошенный экзамен
-      state.courses[row.course].retryAt[row.tier] = now + RETRY_MS; row.phase = 'ended'; sql.saveLesson.run(row.idx, row.correct, row.mistakes, 'ended', row.last_answer, row.touched_at, row.id);
+      state.courses[row.course].retryAt[row.tier] = now + RETRY_MS; row.phase = 'ended'; await repo.saveLesson(row.idx, row.correct, row.mistakes, 'ended', row.last_answer, row.touched_at, row.id);
     }
-    return {userId, state, rev: p.rev, row, before, now};
+    return {repo, userId, state, rev: Number(p.rev), row, before, now};
   }
-  function persist(ctx) { // пишем только если что-то изменилось
+  async function persist(ctx) { // пишем только если что-то изменилось
     const json = JSON.stringify(ctx.state);
-    if (json !== ctx.before) { sql.saveProg.run(json, ctx.now, ctx.userId); ctx.rev++; ctx.before = json; }
+    if (json !== ctx.before) { await ctx.repo.saveProgress(ctx.userId, json, ctx.now); ctx.rev++; ctx.before = json; }
   }
   const payload = (ctx, extra = {}) => ({state: viewState(ctx.state), rev: ctx.rev, serverNow: ctx.now, today: dayKey(ctx.now),
     lesson: ctx.row && (ctx.row.phase === 'quiz' || ctx.row.phase === 'review') ? lessonView(ctx.row) : null, ...extra});
-  const fail = (ctx, r) => { persist(ctx); return {status: r.status, body: {error: r.error, ...r.extra, ...payload(ctx)}}; };
-  const done = (ctx, extra) => { persist(ctx); return ok(payload(ctx, extra)); };
+  const fail = async (ctx, r) => { await persist(ctx); return {status: r.status, body: {error: r.error, ...r.extra, ...payload(ctx)}}; };
+  const done = async (ctx, extra) => { await persist(ctx); return ok(payload(ctx, extra)); };
   const superseded = ctx => fail(ctx, bad(409, 'lesson_superseded'));
 
   return {
-    createProgress: (userId, state, now) => sql.insProg.run(userId, JSON.stringify(state), now),
-    me(userId, now) { const ctx = load(userId, now); return done(ctx); },
+    createProgress: (repo, userId, state, now) => repo.insertProgress(userId, JSON.stringify(state), now),
+    async me(repo, userId, now) { const ctx = await load(repo, userId, now); return done(ctx); },
 
     // Выбор / смена курса. Общий кошелёк (жизни, монеты, серия, заморозка) НЕ меняется, прогресс другого курса тоже.
     // Если идёт урок, он явно прекращается (ответ `abandoned`): штраф за брошенный экзамен идёт в курс, где он начат.
-    course(userId, b, now) {
-      const ctx = load(userId, now), st = ctx.state;
+    async course(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), st = ctx.state;
       if (!isCourse(b.course)) return fail(ctx, bad(400, 'bad_course'));
       if (st.activeCourse === b.course) return done(ctx);
       let abandoned = null;
@@ -58,22 +50,22 @@ export function makeGame({db}) {
           abandoned = {course: row.course, tier: row.tier, level: row.level, exam: !!row.exam, cooldown: false};
           if (row.exam && row.phase === 'quiz') { st.courses[row.course].retryAt[row.tier] = now + RETRY_MS; abandoned.cooldown = true; }
         }
-        sql.delLesson.run(userId); ctx.row = null;
+        await repo.deleteLesson(userId); ctx.row = null;
       }
       st.activeCourse = b.course;
       return done(ctx, {abandoned});
     },
 
-    tier(userId, b, now) {
-      const ctx = load(userId, now), st = ctx.state;
+    async tier(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), st = ctx.state;
       if (!st.activeCourse) return fail(ctx, bad(409, 'no_course'));
       if (b.course !== undefined && b.course !== st.activeCourse) return fail(ctx, bad(409, 'course_mismatch'));
       if (!isInt(b.tier, 0, 3)) return fail(ctx, bad(400, 'bad_tier'));
       st.courses[st.activeCourse].tier = b.tier; return done(ctx);
     },
 
-    start(userId, b, now) {
-      const ctx = load(userId, now), s = ctx.state;
+    async start(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), s = ctx.state;
       if (!s.activeCourse) return fail(ctx, bad(409, 'no_course'));
       if (b.course !== undefined && b.course !== s.activeCourse) return fail(ctx, bad(409, 'course_mismatch'));
       const course = s.activeCourse, c = s.courses[course];
@@ -89,14 +81,14 @@ export function makeGame({db}) {
         if (c.retryAt[b.tier] > now) return fail(ctx, bad(403, 'cooldown', {retryAt: c.retryAt[b.tier]}));
       } else if (b.level > have + 1) return fail(ctx, bad(403, 'level_locked'));
       if (active) s.courses[active.course].retryAt[active.tier] = now + RETRY_MS; // штраф ТОЛЬКО когда действительно заменяем активный экзамен, и именно в его курс
-      sql.delLesson.run(userId);
-      sql.insLesson.run(crypto.randomUUID(), userId, course, b.tier, b.level, exam ? 1 : 0, 'quiz', now, now);
-      ctx.row = sql.lesson.get(userId);
+      await repo.deleteLesson(userId);
+      await repo.insertLesson({id: crypto.randomUUID(), userId, course, tier: b.tier, level: b.level, exam: exam ? 1 : 0, phase: 'quiz', now});
+      ctx.row = await repo.lesson(userId);
       return done(ctx);
     },
 
-    answer(userId, b, now) {
-      const ctx = load(userId, now), row = ctx.row;
+    async answer(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), row = ctx.row;
       if (typeof b.lessonId !== 'string' || !isInt(b.index, 0, 9) || typeof b.given !== 'string' || b.given.length > MAX_GIVEN) return fail(ctx, bad(400, 'bad_request'));
       if (!row || row.id !== b.lessonId) return superseded(ctx);
       const last = row.last_answer ? JSON.parse(row.last_answer) : null;
@@ -120,30 +112,30 @@ export function makeGame({db}) {
           else { result.reward = completeLevel(st, row.course, row.tier, row.level, now); s.phase = 'done'; result.outcome = 'done'; }
         }
         result.correctCount = s.correct;
-        sql.saveLesson.run(s.idx, s.correct, s.mistakes, s.phase, JSON.stringify({index: b.index, given: b.given, result}), now, row.id);
-        ctx.row = sql.lesson.get(userId);
+        await repo.saveLesson(s.idx, s.correct, s.mistakes, s.phase, JSON.stringify({index: b.index, given: b.given, result}), now, row.id);
+        ctx.row = await repo.lesson(userId);
         return done(ctx, {result});
       }
     },
 
-    retry(userId, b, now) {
-      const ctx = load(userId, now), row = ctx.row;
+    async retry(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), row = ctx.row;
       if (!row || row.id !== b.lessonId) return superseded(ctx);
       if (row.phase !== 'review') return fail(ctx, bad(409, 'lesson_not_active'));
       if (!ctx.state.hearts) return fail(ctx, bad(403, 'no_hearts'));
-      sql.saveLesson.run(0, 0, 0, 'quiz', null, now, row.id); ctx.row = sql.lesson.get(userId);
+      await repo.saveLesson(0, 0, 0, 'quiz', null, now, row.id); ctx.row = await repo.lesson(userId);
       return done(ctx);
     },
 
-    abandon(userId, b, now) {
-      const ctx = load(userId, now), row = ctx.row;
+    async abandon(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now), row = ctx.row;
       if (row && row.id !== b.lessonId) return superseded(ctx);
-      if (row) { if (row.exam && row.phase === 'quiz') ctx.state.courses[row.course].retryAt[row.tier] = now + RETRY_MS; sql.delLesson.run(userId); ctx.row = null; }
+      if (row) { if (row.exam && row.phase === 'quiz') ctx.state.courses[row.course].retryAt[row.tier] = now + RETRY_MS; await repo.deleteLesson(userId); ctx.row = null; }
       return done(ctx);
     },
 
-    buy(userId, b, now) {
-      const ctx = load(userId, now);
+    async buy(repo, userId, b, now) {
+      const ctx = await load(repo, userId, now);
       if (typeof b.item !== 'string') return fail(ctx, bad(400, 'bad_request'));
       const r = buy(ctx.state, b.item, now);
       return done(ctx, {purchase: r});

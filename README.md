@@ -2,7 +2,7 @@
 
 Ingliz va rus tillarini o‘zbekcha o‘rganish uchun web-ilova. Rus kursi (A1–B2 mashq darajalari, rasmiy sertifikat emas). Yangi hisob avval kursni, keyin darajani tanlaydi; jon/tanga/strayk ikkala kursda umumiy.
 
-Klient — **React + Vite** (`client/`), server — Node.js + SQLite (`server.mjs`, `server/`). Umumiy sof modullar (savollar, o‘yin mantig‘i, ovoz, klaviatura) `shared/` da.
+Klient — **React + Vite** (`client/`), server — Node.js + SQLite lokal (`server.mjs`) yoki PostgreSQL Vercel funksiyasi (`api/`), umumiy yadro `server/`. Umumiy sof modullar (savollar, o‘yin mantig‘i, ovoz, klaviatura) `shared/` da.
 
 ## Ishga tushirish (production)
 
@@ -25,6 +25,16 @@ npm run dev:client   # Vite, http://localhost:5173 (/api va /audio ni :4173 ga y
 ```
 
 Qat’iy CSP faqat production yig‘ilmasida ishlaydi (Vite dev rejimi `<style>` qo‘shadi).
+
+## Vercel (serverless)
+
+Bu repozitoriy **manba kodi**: GitHub sahifasida README ko‘rinishi normal holat va sayt ishlayotganini bildirmaydi. Vercel saytni `vercel.json` bo‘yicha **yig‘ib** (`npm run build` -> `dist/`) beradi, `/api/*` ni esa Node funksiyasi `api/index.mjs` bajaradi (xuddi shu domen, PostgreSQL/Neon `DATABASE_URL` orqali). `DATABASE_URL` bo‘lmasa API halol **503** javob beradi (xotirada soxta saqlash yo‘q).
+
+- Panel qadamlari (qisqa): **[VERCEL-SETUP.md](VERCEL-SETUP.md)**.
+- Kod: umumiy API yadrosi `server/app.mjs`; lokal `server.mjs` (SQLite) va Vercel `server/vercel.mjs` (PostgreSQL) bir xil qoidalardan foydalanadi (`server/game.mjs`, `shared/`).
+- Sxema: `migrations/*.sql`, qo‘lda `npm run db:migrate` (yig‘ish paytida ishlamaydi). Lokal akkauntlarni ko‘chirish ixtiyoriy: `npm run db:import-sqlite -- --from data/jenius.db --yes`.
+- `npm start` avvalgidek SQLite (`data/jenius.db`) bilan ishlaydi.
+- Testlar: `npm run check` (SQLite backend, PostgreSQL SQL testlari — haqiqiy PGlite, React, build). **Haqiqiy Neon va Vercel bilan tekshirilmagan** (ulanish va loyiha manzili yo‘q); bir nechta jarayon orasidagi haqiqiy parallel bloklar PGlite (bitta ulanish) da isbotlanmaydi.
 
 ## Joylashtirish: GitHub va Node-hosting
 

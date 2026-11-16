@@ -20,7 +20,7 @@ function build() {
 
 test('real Vite build: index.html has no inline script/style/handlers; one JS + one CSS asset; audio copied', () => {
   const {html, js, css} = build();
-  assert.match(html, /<html lang="uz"/); assert.match(html, /<div id="root"><\/div>/);
+  assert.match(html, /<html lang="uz"/); assert.match(html, /<div id="root"><p class="static-boot">[^<]*Jenius yuklanmoqda/); assert.ok(!/<div id="root"><\/div>/.test(html), "root must not be empty: shows static text if JS fails");
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, 'no inline <script>');
   assert.doesNotMatch(html, /<style/i); assert.doesNotMatch(html, /\sstyle\s*=/i); assert.doesNotMatch(html, /\son[a-z]+\s*=/i);
   assert.match(js, /^\/assets\/[\w.-]+\.js$/); assert.match(css, /^\/assets\/[\w.-]+\.css$/);
