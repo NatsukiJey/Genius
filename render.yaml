@@ -1,0 +1,23 @@
+# Необязательный пример для Render.com. Ничего не развёрнуто и не отправлено.
+# Секреты (sync: false) вводятся вручную в панели Render, в репозиторий они не попадают.
+services:
+  - type: web
+    name: jenius
+    runtime: node
+    plan: starter                 # постоянный диск есть только на платных планах
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/auth/providers
+    disk:
+      name: jenius-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - {key: NODE_VERSION, value: "26"}       # нужен Node 26+ (встроенный node:sqlite)
+      - {key: HOST, value: 0.0.0.0}
+      - {key: DB_PATH, value: /var/data/jenius.db}
+      - {key: COOKIE_SECURE, value: "1"}
+      - {key: TRUST_PROXY, value: "1"}         # проверьте, как хостинг заполняет X-Forwarded-For
+      - {key: ALLOWED_HOSTS, sync: false}      # ваш домен, например jenius.example.com
+      - {key: TELEGRAM_BOT_TOKEN, sync: false}
+      - {key: TELEGRAM_CHAT_ID, sync: false}

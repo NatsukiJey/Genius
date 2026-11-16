@@ -1,0 +1,97 @@
+// Запускает настоящий public/app.mjs в мини-браузере: выбор курса, переключатель в шапке, русский урок с клавиатурой-подсказкой.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {freshState, viewState, completeLevel} from '../../shared/engine.mjs';
+
+const app = {innerHTML: ''}, modal = {innerHTML: '', querySelector: () => ({focus() {}}), querySelectorAll: () => []}, toastEl = {textContent: '', classList: {add() {}, remove() {}}};
+let listeners = {}, calls = [], me, answerInput = null;
+globalThis.window = {addEventListener() {}, scrollTo() {}};
+globalThis.location = {pathname: '/', replace() {}, reload() {}};
+globalThis.setInterval = () => 0;
+globalThis.document = {visibilityState: 'visible', body: {prepend() {}}, addEventListener(t, fn) { (listeners[t] ||= []).push(fn); }, createElement: () => ({setAttribute() {}, hidden: true, innerHTML: ''}), querySelectorAll: () => [],
+  querySelector(sel) { return sel === '#app' ? app : sel === '#modal' ? modal : sel === '#toast' ? toastEl : sel === '#answer' ? answerInput : null; }};
+const payload = (state, lesson = null) => ({state: viewState(state), user: {username: 'ali'}, serverNow: Date.now(), today: '2026-11-10', lesson});
+globalThis.fetch = async (url, init = {}) => {
+  const body = init.body ? JSON.parse(init.body) : undefined; calls.push([init.method || 'GET', url, body]);
+  const json = async () => me(url, body), status = globalThis.forceStatus?.(url, body) ?? 200; return {status, ok: status < 400, json};
+};
+const click = dataset => listeners.click.forEach(fn => fn({target: {closest: s => (s === 'button,a' ? {dataset, disabled: false, getAttribute() {}} : null)}, preventDefault() {}}));
+const tick = () => new Promise(r => setTimeout(r, 30));
+const st = freshState();
+
+test('new account sees the course chooser first (no course selected)', async () => {
+  me = () => payload(st);
+  await import('../../public/app.mjs'); await tick();
+  assert.match(modal.innerHTML, /Qaysi tilni o‘rganamiz/); assert.match(modal.innerHTML, /data-course="en"/); assert.match(modal.innerHTML, /data-course="ru"/);
+  assert.match(modal.innerHTML, /Rus tili/); assert.match(modal.innerHTML, /Ingliz tili/); assert.doesNotMatch(modal.innerHTML, /class="text-link" data-action="close"/, 'cannot dismiss without choosing');
+  assert.match(app.innerHTML, /class="course-switch"/);
+});
+
+test('choosing Russian calls /api/course, then asks for the tier with A1-B2 names and the honest practice note', async () => {
+  me = (url, body) => { if (url === '/api/course') { st.activeCourse = body.course; } return payload(st); };
+  click({course: 'ru'}); await tick();
+  assert.deepEqual(calls.filter(c => c[1] === '/api/course').pop(), ['POST', '/api/course', {course: 'ru'}]);
+  assert.match(modal.innerHTML, /Rus tili: darajangizni tanlang/);
+  for (const n of ['A1', 'A2', 'B1', 'B2']) assert.match(modal.innerHTML, new RegExp(`<strong>${n}</strong>`));
+  assert.match(modal.innerHTML, /rasmiy sertifikat yoki imtihon \(TORFL\) emas/);
+  assert.match(app.innerHTML, /data-course="ru" aria-pressed="true"/); assert.match(app.innerHTML, /data-course="en" aria-pressed="false"/);
+  assert.match(modal.innerHTML, /data-tier="1" data-tier-course="ru"/, 'dialog captures the course it was rendered for');
+  click({tier: '1', tierCourse: 'ru'}); await tick();
+  assert.deepEqual(calls.filter(c => c[1] === '/api/tier').pop(), ['POST', '/api/tier', {tier: 1, course: 'ru'}]);
+});
+
+test('learn page of the Russian course: course texts, Russian chapter, practice note; progress of the other course not shown', async () => {
+  st.courses.ru.tier = 1; completeLevel(st, 'ru', 1, 1); completeLevel(st, 'en', 0, 1);
+  me = () => payload(st); listeners.visibilitychange.forEach(f => f()); await tick(); // refresh from server
+  click({page: 'learn'}); await tick();
+  assert.match(app.innerHTML, /Rus tilini yodlama/); assert.match(app.innerHTML, /Привет!/); assert.match(app.innerHTML, /A2 · 50 LEVEL|KUNDALIK HAYOT · 50 LEVEL/i); assert.match(app.innerHTML, /1\/50/);
+  assert.match(app.innerHTML, /Kundalik hayot/); assert.match(app.innerHTML, /practice-note/); assert.match(app.innerHTML, /TORFL/);
+});
+
+test('start sends the course; Russian lesson shows Cyrillic words and the course-specific Uzbek instruction', async () => {
+  calls = [];
+  me = (url, body) => url === '/api/lesson/start' ? payload(st, {id: 'L1', course: 'ru', tier: 1, level: 2, exam: false, phase: 'quiz', index: 0, total: 5, correct: 0, mistakes: 0}) : payload(st);
+  click({level: '2'}); await tick();
+  assert.deepEqual(calls.find(c => c[1] === '/api/lesson/start')[2], {course: 'ru', tier: 1, level: 2, exam: false});
+  assert.match(modal.innerHTML, /YANGI SO‘ZLAR/); assert.match(modal.innerHTML, /<strong lang="ru">[а-яё ]+<\/strong>/);
+  assert.ok(!/[A-Za-z]{3,}<\/strong><span>Tarjima/.test(modal.innerHTML), 'no Latin word cards');
+  click({action: 'quiz'}); await tick();
+  assert.match(modal.innerHTML, /Ruscha so‘zning o‘zbekcha tarjimasini toping/); assert.match(modal.innerHTML, /class="question-word" lang="ru"/);
+});
+
+test('write-in-Russian question shows the Cyrillic key hint; Uzbek typing question does not', async () => {
+  me = () => payload(st, {id: 'L1', course: 'ru', tier: 1, level: 2, exam: false, phase: 'quiz', index: 2, total: 5, correct: 2, mistakes: 0});
+  await import('../../public/app.mjs?resume'); await tick(); // boot() resumes the active server lesson
+  assert.match(modal.innerHTML, /Rus tilida yozing/); assert.match(modal.innerHTML, /class="ru-keys"/);
+  for (const ch of 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя') assert.ok(modal.innerHTML.includes(`data-ru-char="${ch}"`), ch);
+  assert.match(modal.innerHTML, /data-ru-back/); assert.match(modal.innerHTML, /id="answer" class="answer-input" lang="ru"/);
+  me = () => payload(st, {id: 'L1', course: 'ru', tier: 1, level: 2, exam: false, phase: 'quiz', index: 4, total: 5, correct: 4, mistakes: 0});
+  await import('../../public/app.mjs?resume2'); await tick();
+  assert.match(modal.innerHTML, /O‘zbek tilida yozing/); assert.doesNotMatch(modal.innerHTML, /ru-keys/);
+});
+
+test('English lesson of the same page is unchanged: English texts, no Russian keys', async () => {
+  const s2 = freshState(); s2.activeCourse = 'en'; s2.courses.en.tier = 0;
+  me = () => payload(s2, {id: 'E1', course: 'en', tier: 0, level: 1, exam: false, phase: 'quiz', index: 2, total: 5, correct: 2, mistakes: 0});
+  await import('../../public/app.mjs?en'); await tick();
+  assert.match(modal.innerHTML, /Ingliz tilida yozing/); assert.doesNotMatch(modal.innerHTML, /ru-keys/); assert.match(modal.innerHTML, /id="answer" class="answer-input" lang="en"/);
+});
+
+test('stale tier dialog: old tier request carries its original course; 409 course_mismatch saves nothing and reopens the chooser for the current course', async () => {
+  const s3 = freshState(); s3.activeCourse = 'ru'; s3.courses.ru.tier = null; s3.courses.en.tier = null;
+  me = () => payload(s3); await import('../../public/app.mjs?stale'); await tick();
+  assert.match(modal.innerHTML, /Rus tili: darajangizni tanlang/);
+  assert.match(modal.innerHTML, /data-tier="2" data-tier-course="ru"/);
+  // active course changes server-side (other tab) after the dialog was rendered
+  s3.activeCourse = 'en';
+  calls = [];
+  globalThis.forceStatus = url => url === '/api/tier' && s3.activeCourse !== 'ru' ? 409 : undefined;
+  me = (url, body) => { if (url === '/api/tier' && body.course !== s3.activeCourse) return {error: 'course_mismatch', ...payload(s3)}; if (url === '/api/tier') s3.courses[s3.activeCourse].tier = body.tier; return payload(s3); };
+  const last = listeners.click.at(-1); // only the freshly imported app instance (older imports left their listeners)
+  last({target: {closest: q => (q === 'button,a' ? {dataset: {tier: '2', tierCourse: 'ru'}, disabled: false, getAttribute() {}} : null)}, preventDefault() {}}); await tick();
+  assert.deepEqual(calls.filter(c => c[1] === '/api/tier'), [['POST', '/api/tier', {tier: 2, course: 'ru'}]], 'old course sent, not the new one');
+  assert.equal(s3.courses.en.tier, null, 'English course tier not changed'); assert.equal(s3.courses.ru.tier, null, 'Russian course tier not changed');
+  assert.match(modal.innerHTML, /Ingliz tili: darajangizni tanlang/, 'chooser reopened for the current course');
+  assert.match(modal.innerHTML, /data-tier-course="en"/);
+  globalThis.forceStatus = undefined;
+});

@@ -1,0 +1,19 @@
+/* Переключатель курсов и русские кнопки. */
+/* --- course switcher (header) and Russian key hint --- */
+.course-switch{display:flex;gap:4px;padding:3px;background:#f1f4ec;border:1px solid var(--line);border-radius:12px}
+.course-btn{min-height:40px;min-width:48px;padding:6px 10px;border:1px solid transparent;border-radius:9px;background:transparent;font-weight:700;font-size:12px;color:#6f8061;white-space:nowrap}
+.course-btn[aria-pressed="true"]{background:#fff;border-color:#9cc17f;color:#3f6d2f;box-shadow:0 2px 0 #d6e6c8}
+.course-btn:hover{background:#edf5e5}
+.practice-note{margin-top:4px}
+.ru-keys{margin-top:14px}
+.ru-keys small{display:block;font-size:10px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.ru-key-row{display:flex;flex-wrap:wrap;gap:5px}
+.ru-key{min-width:36px;height:40px;padding:0 8px;border:1px solid #d7e2ca;border-bottom:3px solid #cbd9bc;background:#fff;border-radius:8px;font-size:16px;font-weight:650}
+.ru-key.wide-key{min-width:56px;background:#f1f4ec}
+.ru-key:disabled{opacity:.35}
+@media(max-width:900px){header{gap:10px}}
+@media(max-width:620px){header{height:auto;min-height:65px;flex-wrap:wrap;gap:8px;padding:8px 12px}
+.course-switch{order:2}
+.stats{order:3;gap:10px}
+.course-btn{min-height:44px;min-width:52px}
+.ru-key{min-width:40px;height:44px}}

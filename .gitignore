@@ -1,0 +1,21 @@
+# --- секреты и настройки (никогда не коммитим) ---
+.env
+.env.*
+!.env.example
+telegram-config.json
+
+# --- база данных и данные тестов ---
+data/
+tests/.data/
+*.db
+*.db-wal
+*.db-shm
+
+# --- зависимости и сборка ---
+node_modules/
+dist/
+coverage/
+*.log
+
+# --- старый (legacy) клиент: неактивен, в production не попадает и в репозиторий не идёт ---
+/public/

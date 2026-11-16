@@ -1,0 +1,64 @@
+// Регресс: CSP (script-src 'self') блокирует inline onclick, а «Qayta urinish» при user=null раньше не работал.
+// Запускаем настоящий public/app.mjs с минимальными заглушками браузера (в отдельном процессе node --test).
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+
+const read = f => readFile(new URL('../../public/' + f, import.meta.url), 'utf8');
+
+test('no inline event handlers anywhere in the client (CSP would block them)', async () => {
+  for (const f of ['index.html', 'app.mjs', 'data.mjs', 'engine.mjs'])
+    assert.doesNotMatch(await read(f), /\son[a-z]+\s*=\s*["']|javascript:/i, f);
+  assert.match(await read('app.mjs'), /data-action="reload"/);
+});
+
+// --- мини-браузер ---
+const app = {innerHTML: ''}, banner = {innerHTML: '', hidden: true, setAttribute() {}};
+let bannerAttached = false, listeners = {}, reloads = 0, fetchCalls = 0, serverUp = false, path = '/';
+globalThis.window = {addEventListener() {}, scrollTo() {}};
+globalThis.location = {get pathname() { return path; }, replace() {}, reload() { reloads++; }};
+globalThis.setInterval = () => 0;
+globalThis.document = {
+  visibilityState: 'visible', body: {prepend() { bannerAttached = true; }},
+  addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
+  createElement: () => banner,
+  querySelectorAll: () => [],
+  querySelector(sel) {
+    if (sel === '#app') return app;
+    if (sel === '#banner') return bannerAttached ? banner : null;
+    if (sel === '#login-form,#register-form') return /id="(login|register)-form"/.test(app.innerHTML) ? {} : null;
+    return null;
+  }
+};
+globalThis.fetch = async () => { fetchCalls++; if (!serverUp) throw new TypeError('offline'); return {status: 401, ok: false, json: async () => ({error: 'auth'})}; };
+const click = action => listeners.click.forEach(fn => fn({target: {closest: () => ({dataset: {action}, disabled: false})}, preventDefault() {}}));
+const tick = () => new Promise(r => setTimeout(r, 20));
+
+test('boot offline page: data-action=reload works, retry-net re-runs boot when user=null', async () => {
+  path = '/login';
+  await import('../../public/app.mjs');
+  await tick();
+  assert.match(app.innerHTML, /Server bilan aloqa yo‘q/);
+  assert.doesNotMatch(app.innerHTML, /onclick/);
+  assert.match(app.innerHTML, /data-action="reload"/);
+  click('reload'); assert.equal(reloads, 1, 'reload handled by the external listener');
+  assert.equal(banner.hidden, false); assert.match(banner.innerHTML, /data-action="retry-net"/);
+
+  let before = fetchCalls; click('retry-net'); await tick();
+  assert.equal(fetchCalls, before + 1, 'retry actually calls the server even though user=null');
+  assert.match(app.innerHTML, /Server bilan aloqa yo‘q/, 'still offline: offline screen stays');
+  assert.equal(banner.hidden, false);
+
+  serverUp = true; click('retry-net'); await tick();
+  assert.match(app.innerHTML, /id="login-form"/, 'server is back: boot ran again and showed the login form');
+  assert.equal(banner.hidden, true, 'banner cleared');
+});
+
+test('login page: retry-net pings the server, keeps the form, clears/keeps banner honestly', async () => {
+  const form = app.innerHTML; assert.match(form, /id="login-form"/);
+  serverUp = false; let before = fetchCalls; click('retry-net'); await tick();
+  assert.equal(fetchCalls, before + 1); assert.equal(banner.hidden, false, 'still offline -> banner stays');
+  assert.equal(app.innerHTML, form);
+  serverUp = true; click('retry-net'); await tick();
+  assert.equal(banner.hidden, true); assert.equal(app.innerHTML, form, 'typed form is not wiped');
+});

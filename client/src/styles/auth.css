@@ -1,0 +1,28 @@
+/* Вход/регистрация, карточка аккаунта, баннер «нет сети». */
+.result .typo-note{text-align:left}
+
+/* ---- accounts: auth pages, account card, server-connection banner ---- */
+.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{width:100%;max-width:440px;padding:32px 28px;text-align:left}
+.auth-card .mascot{margin:0 0 14px}
+.auth-card h1{margin:6px 0 4px;font-size:30px;letter-spacing:-1px}
+.auth-lead{color:var(--muted);font-size:12px;line-height:1.7;margin:0 0 18px}
+.auth-form{display:flex;flex-direction:column;gap:8px}
+.auth-form label{font-weight:700;margin-top:8px}
+.auth-form input[type=text],.auth-form input[type=password]{width:100%;padding:14px;border:2px solid #dce6cf;border-radius:12px;background:#fff;color:var(--ink);font-size:16px}
+.auth-form small{color:var(--muted);line-height:1.7;font-size:11px}
+.auth-form .check{display:flex;gap:10px;align-items:flex-start;font-weight:500;font-size:12px;line-height:1.6;margin-top:14px}
+.auth-form .check input{margin-top:3px;flex:none}
+.auth-form .primary{margin-top:14px;align-self:stretch}
+#auth-status{min-height:18px;margin:6px 0 0;font-size:12px;color:#b4533a}
+.auth-switch{font-size:12px;color:var(--muted);margin:18px 0 0}
+.auth-switch a{color:#50813f;font-weight:700;text-decoration:underline}
+.account-card{max-width:650px;display:flex;flex-direction:column;gap:10px;line-height:1.7}
+.account-card p{margin:0}
+.account-card .primary{align-self:flex-start;margin-top:10px}
+.warn-note{background:#fff7e8;border:1px solid #f0dcb4;border-radius:10px;padding:12px 14px;color:#7a5a1f}
+#banner{position:sticky;top:0;z-index:120;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;background:#b4533a;color:#fff;padding:10px 14px;font-size:13px}
+#banner[hidden]{display:none}
+#banner button{background:#fff;color:#8a3a26;border:0;border-radius:8px;padding:6px 12px;font-weight:700}
+@media(max-width:620px){.auth-card{padding:24px 18px}
+.auth-card h1{font-size:26px}}

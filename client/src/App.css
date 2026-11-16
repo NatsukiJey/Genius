@@ -1,0 +1,13 @@
+/* Jenius: общий CSS. Порядок @import = порядок исходного каскада (менять нельзя). Стили нарезаны подряд, без перестановок. */
+@import './styles/base.css';
+@import './styles/shell.css';
+@import './styles/hero.css';
+@import './styles/learn.css';
+@import './styles/pages.css';
+@import './styles/dialogs.css';
+@import './styles/toast.css';
+@import './styles/responsive.css';
+@import './styles/auth.css';
+@import './styles/sound.css';
+@import './styles/courses.css';
+@import './styles/react.css';

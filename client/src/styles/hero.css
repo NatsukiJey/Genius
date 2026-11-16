@@ -1,0 +1,46 @@
+/* Герой «Учёба» и сова-талисман. */
+.hero{border:1px solid #e5ecd9;border-radius:23px;background:#f0f5e6;position:relative;min-height:345px;display:flex;overflow:hidden}
+.hero-copy{padding:38px 38px;position:relative;z-index:2;flex:1}
+.eyebrow{font-size:9px;letter-spacing:1.7px;font-weight:750;color:#7c9c62;display:flex;gap:6px;align-items:center}
+.eyebrow>span{width:6px;height:6px;border-radius:50%;background:#86ac64}
+h1{font-size:clamp(32px,3.1vw,49px);line-height:1.18;letter-spacing:-1.8px;font-weight:780;margin:19px 0 15px}
+h1>span{color:#6a9654}
+.hero p{font-size:12px;line-height:1.9;color:#8a9780;margin:0 0 22px}
+.primary{display:inline-flex;justify-content:center;gap:25px;align-items:center;background:#6bb954;color:#fff;border:1px solid #61a94a;border-bottom:4px solid #50923e;border-radius:11px;padding:13px 22px;font-size:12px;font-weight:750;transition:transform .15s,filter .15s}
+.primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+.primary:active{transform:translateY(2px);border-bottom-width:2px}
+.primary:disabled{opacity:.55}
+.hero-meta{display:flex;gap:18px;font-size:9px;color:#91a083;margin-top:17px}
+.hero-art{width:38%;position:relative;display:flex;align-items:center;justify-content:center;min-width:250px}
+.mascot{width:156px;height:180px;position:relative;background:#88bf64;border-radius:47% 47% 44% 44%;box-shadow:inset -16px -10px 0 #77ad54;transform:rotate(-8deg);z-index:2}
+.ear{width:44px;height:55px;position:absolute;top:-8px;background:#88bf64;border-radius:8px 70% 0 0}
+.ear.left{left:4px;transform:rotate(-25deg)}
+.ear.right{right:4px;transform:rotate(25deg)}
+.face{position:absolute;background:#e8f2c5;left:15px;right:15px;top:29px;height:94px;border-radius:48% 48% 44% 44%;display:flex;gap:23px;align-items:center;justify-content:center}
+.eye{height:24px;width:15px;border-radius:50%;background:#30412a;position:relative}
+.eye:after{content:'';position:absolute;background:white;border-radius:50%;width:5px;height:7px;left:3px;top:3px}
+.beak{position:absolute;width:18px;height:18px;background:#e7b35b;transform:rotate(45deg);border-radius:4px;top:64px}
+.wing{position:absolute;width:38px;height:81px;background:#71a34e;top:76px;border-radius:60%;z-index:-1}
+.wing.left{left:-17px;transform:rotate(25deg)}
+.wing.right{right:-21px;transform:rotate(-38deg)}
+.feet{position:absolute;bottom:-10px;left:30px;width:31px;height:17px;border-radius:50%;background:#e3b25a;box-shadow:62px 0 #e3b25a}
+.mini.mascot{width:42px;height:48px;margin:0 0 18px 5px}
+.mini .ear{width:13px;height:17px;top:-2px}
+.mini .face{left:4px;right:4px;top:8px;height:26px;gap:7px}
+.mini .eye{width:4px;height:7px}
+.mini .eye:after{display:none}
+.mini .beak{width:5px;height:5px;top:18px}
+.mini .wing{width:10px;height:22px;top:21px}
+.mini .wing.left{left:-4px}
+.mini .wing.right{right:-5px}
+.mini .feet{width:9px;height:5px;left:8px;bottom:-3px;box-shadow:17px 0 #e3b25a}
+.orbit{position:absolute;border:1px dashed #d4dfc5;border-radius:50%;width:270px;height:270px;transform:rotate(-20deg)}
+.orbit-two{width:310px;height:220px}
+.float-label{position:absolute;background:#fff;border:1px solid #e5eadf;padding:11px 18px;border-radius:12px;font-size:14px;box-shadow:0 6px 0 #e3ead7;z-index:4}
+.label-a{top:46px;left:2px;transform:rotate(-12deg)}
+.label-b{right:11px;top:112px;transform:rotate(10deg);color:#74975a}
+.spark{position:absolute;color:#a6bf80;font-size:27px}
+.spark-a{top:26px;right:76px}
+.spark-b{left:5px;bottom:77px}
+.art-ground{position:absolute;background:#dbe5c8;width:170px;height:22px;border-radius:50%;top:262px;filter:blur(3px)}
+.art-badge{position:absolute;bottom:30px;font-size:8px;letter-spacing:2px;color:#97a87f;z-index:3}

@@ -1,0 +1,40 @@
+/* Диалоги: оверлей, уроки, вопросы, результат. */
+.overlay{position:fixed;inset:0;z-index:50;background:#21382b66;backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
+.dialog{background:var(--paper);border:1px solid #e0e9d6;border-radius:24px;width:540px;max-width:100%;padding:32px;box-shadow:0 24px 100px #263d3226;max-height:92dvh;overflow:auto}
+.dialog h2{font-size:27px;line-height:1.3}
+.dialog>p{color:var(--muted);font-size:12px;line-height:1.8}
+.tier-options{display:grid;gap:10px;margin-top:24px}
+.tier-option{display:flex;align-items:center;text-align:left;gap:15px;border:1px solid #dce6d2;background:#fff;padding:17px;border-radius:13px}
+.tier-option:hover{background:#edf5e5;border-color:#9cc17f}
+.tier-option>span{font-size:29px}
+.tier-option strong{display:block;font-size:14px}
+.tier-option small{display:block;font-size:10px;color:var(--muted);margin-top:6px}
+.tier-option b{margin-left:auto;color:#93b379}
+.lesson-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}
+.close{border:0;background:#edf2e7;border-radius:9px;width:33px;height:33px;font-size:23px;color:#8a9c7c}
+.word-list{display:grid;gap:9px;margin:23px 0}
+.word-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;border:1px solid #dce5d2;background:#fff;border-radius:10px;text-align:left}
+.word-card strong{font-size:17px}
+.word-card span{font-size:11px;color:#9aab8b}
+.word-card.revealed{background:#edf5e5}
+.word-card.revealed span{color:#547b3f}
+.wide{width:100%;margin-top:20px}
+.quiz-meta{margin:14px 0 28px;color:#95a584;font-size:10px;letter-spacing:1px;display:flex;justify-content:space-between}
+.question-word{font-size:26px;padding:24px;text-align:center;background:#eff5e7;border:1px solid #e0eacf;border-radius:12px;margin:25px 0;color:#64844e;font-weight:700}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{display:flex;align-items:center;text-align:left;gap:12px;padding:15px;border:1px solid #dce3d3;border-bottom:3px solid #dce3d3;border-radius:11px;background:#fff;font-size:13px;min-height:55px}
+.choice small{color:#9faa94;border:1px solid #e7ebdf;border-radius:5px;padding:3px 6px;font-size:9px}
+.choice.selected{background:#e7f3db;border-color:#99bf77;color:#658d45}
+.answer-input{width:100%;padding:17px;border:2px solid #dce6cf;border-radius:12px;background:white;color:var(--ink);font-size:18px}
+.no-heart{display:block;color:#9ba78e;font-size:10px;margin-top:10px}
+.assembled{padding:18px;border-bottom:2px solid #cddbbf;min-height:65px;font-size:22px;letter-spacing:3px;text-align:center;color:#6e9154}
+.tiles{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:20px 0}
+.tiles button{min-width:35px;height:40px;border:1px solid #d7e2ca;border-bottom:3px solid #cbd9bc;background:white;border-radius:8px;font-weight:700;font-size:17px}
+.tiles button:disabled{opacity:.25}
+.feedback{padding:15px;border-radius:9px;margin-top:18px;font-size:13px}
+.good{background:#e0f2d6;color:#507c39}
+.bad{background:#f9e8df;color:#b57958}
+.result{text-align:center}
+.result-icon{font-size:65px;display:block;margin:15px}
+.result .eyebrow{justify-content:center}
+.result .text-link{display:block;margin:12px auto}

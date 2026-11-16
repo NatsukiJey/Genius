@@ -1,0 +1,3 @@
+/* Добавлено при переходе на React: диалог получает фокус программно (без рамки). */
+.dialog:focus{outline:none}
+.dialog:focus-visible{outline:none}
