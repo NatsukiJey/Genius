@@ -4,6 +4,7 @@ import {HttpError, MSG, USERNAME_RE, validateCredentials, makeHasher, makeSessio
 import {makeGame} from './game.mjs';
 import {sanitizeLocal} from './migrate-local.mjs';
 import {freshState} from '../shared/engine.mjs';
+import {dbReason} from './store-pg.mjs';
 
 export const MAX_BODY = 16 * 1024;
 const MIN = 60000, HOUR = 3600000, WIN15 = 15 * MIN;
@@ -39,11 +40,11 @@ export function ipKey(raw) {
   return g.slice(0, 4).map(x => x.replace(/^0+(?=.)/, '')).join(':') + '::/64';
 }
 
-// Ошибки базы -> честные 503 (без текста ошибки и без адреса базы).
+// Ошибки базы -> честные 503 (без текста ошибки и без адреса базы). body.reason — безопасная причина для диагностики (db_connection/db_timeout/db_schema/db_auth).
 export function dbHttpError(e) {
-  const code = String(e && e.code || '');
-  if (code === '42P01') return new HttpError(503, 'Baza sxemasi tayyor emas: `npm run db:migrate` ni bir marta ishga tushiring (VERCEL-SETUP.md).');
-  if (/^(08|28|3D|53|57)/.test(code) || /^(ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|ENETUNREACH)/.test(code) || /timeout|Connection terminated/i.test(String(e && e.message))) return new HttpError(503, 'Baza vaqtincha mavjud emas. Birozdan keyin urinib ko‘ring.', {}, {'Retry-After': '5'});
+  const reason = dbReason(e);
+  if (reason === 'db_schema') return new HttpError(503, 'Baza sxemasi tayyor emas: `npm run db:migrate` ni bir marta ishga tushiring (VERCEL-SETUP.md).', {reason});
+  if (reason) return new HttpError(503, 'Baza vaqtincha mavjud emas. Birozdan keyin urinib ko‘ring.', {reason, retryable: true}, {'Retry-After': '5'});
   return null;
 }
 
@@ -192,7 +193,7 @@ export function createApp(opts) {
     } catch (e) {
       if (e instanceof HttpError) return send(res, e.status, e.body, e.headers);
       const d = dbHttpError(e);
-      log(`server error: ${e && e.name}${e && e.code ? ' ' + e.code : ''}: ${redact(e && e.message, secrets)}`); // тела запросов, пароли и адреса баз не логируем
+      log(`server error: ${req.method} ${pathname} ${d ? d.body.reason : '500'}: ${e && e.name}${e && e.code ? ' ' + e.code : ''}: ${redact(e && e.message, secrets)}`); // тела запросов, пароли и адреса баз не логируем
       if (d) return send(res, d.status, d.body, d.headers);
       send(res, 500, {error: 'Server xatosi'});
     }

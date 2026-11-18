@@ -37,7 +37,7 @@ test('5xx from the server is treated as "no connection" with the honest banner t
   fakeServer({'GET /api/me': () => fail ? {status: 502, data: {}} : {data: payload(st)}});
   renderApp(); await ready(); expect(banner().hidden).toBe(true);
   fail = true; window.dispatchEvent(new Event('focus'));
-  await waitFor(() => expect(banner().hidden).toBe(false)); expect(textOf(banner())).toBe('Aloqa vaqtincha yo‘q — ma’lumotlar yangilanmadi. Kiritganingiz joyida turibdi.Qayta urinish'); // фоновое чтение: другой текст, чем у неподтверждённой записи
+  await waitFor(() => expect(banner().hidden).toBe(false)); expect(textOf(banner())).toBe('Aloqa vaqtincha yo‘q — ma’lumotlar yangilanmadi. Kiritganingiz joyida turibdi.Sabab: serverda xatolik · HTTP 502Qayta urinish'); // + безопасная диагностика; фоновое чтение: другой текст, чем у неподтверждённой записи
   fail = false; await act(async () => { banner().querySelector('button').click(); });
   await waitFor(() => expect(banner().hidden).toBe(true));
 });

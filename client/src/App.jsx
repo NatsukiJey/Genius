@@ -14,11 +14,11 @@ import './App.css';
 function Shell() {
   const {snap, retryNet, api, navigate} = useGame(), path = usePath();
   let body;
-  if (snap.phase === 'ready') return (<><OfflineBanner show={snap.netDown} kind={snap.netKind} onRetry={retryNet} /><MainApp /></>);
+  if (snap.phase === 'ready') return (<><OfflineBanner show={snap.netDown} kind={snap.netKind} diag={snap.netDiag} onRetry={retryNet} /><MainApp /></>);
   if (snap.phase === 'offline') body = <OfflineScreen onReload={() => navigate.reload()} problem={snap.problem} />;
   else if (snap.phase === 'auth') body = <AuthPage mode={path === '/register' ? 'register' : 'login'} api={api} navigate={navigate} />;
   else body = <BootScreen />;
-  return (<><OfflineBanner show={snap.netDown} kind={snap.netKind} onRetry={retryNet} /><div id="app">{body}</div><div id="modal"></div></>);
+  return (<><OfflineBanner show={snap.netDown} kind={snap.netKind} diag={snap.netDiag} onRetry={retryNet} /><div id="app">{body}</div><div id="modal"></div></>);
 }
 
 // env — для тестов: можно подставить свой navigate/channel. В браузере не нужен.

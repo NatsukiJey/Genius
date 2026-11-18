@@ -40,7 +40,7 @@ test('pg.Pool driver (real pg module, no database server): unreachable DB -> cle
 
 test('pg driver transaction protocol: BEGIN → work → COMMIT; error → ROLLBACK + release; broken rollback destroys the client; int8 parsed to Number', async () => {
   const seen = [];
-  const mkClient = failRollback => ({query: async s => { seen.push(s); if (failRollback && s === 'ROLLBACK') throw new Error('gone'); return {rows: []}; }, release: v => seen.push('release:' + !!v)});
+  const mkClient = failRollback => ({on() {}, query: async s => { seen.push(s); if (failRollback && s === 'ROLLBACK') throw new Error('gone'); return {rows: []}; }, release: v => seen.push('release:' + !!v)});
   // pgPoolDriver создаёт настоящий pg.Pool, поэтому подменяем его connect()/query() на экземпляре
   const driver = await pgPoolDriver('postgres://u:p@127.0.0.1:1/x'); // подключения не происходит: Pool ленивый
   const pg = (await import('pg')).default;

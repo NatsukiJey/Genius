@@ -21,7 +21,7 @@ export function fakeServer(routes) {
     if (!h) return {status: 404, ok: false, json: async () => ({error: 'nf'})};
     const r = await (typeof h === 'function' ? h(body, calls) : h);
     if (r instanceof Error) throw r;
-    return {status: r.status ?? 200, ok: (r.status ?? 200) < 400, json: async () => r.data ?? r.body ?? {}};
+    return {status: r.status ?? 200, ok: (r.status ?? 200) < 400, json: async () => r.data ?? r.body ?? {}, headers: {get: k => r.headers?.[String(k).toLowerCase()] ?? null}};
   };
   const fetchMock = vi.fn(impl); globalThis.fetch = fetchMock;
   return {calls, fetchMock, of: (m, u) => calls.filter(c => c.method === m && c.url === u)};
