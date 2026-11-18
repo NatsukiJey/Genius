@@ -5,14 +5,15 @@ import {useCallback, useEffect, useRef} from 'react';
 // hasSession() — идёт ли урок; onStaleLesson() вызывается, если на сервере уже ДРУГОЙ урок (начат на другом устройстве).
 export function useRefresh({game, hasSession, getSessionId, onStaleLesson}) {
   const {store, api, busy, channel, refreshRef, navigate} = game;
-  const refreshing = useRef(false), last = useRef(Date.now());
+  const refreshing = useRef(0), last = useRef(Date.now());
 
-  const refresh = useCallback(async () => {
-    if (busy.current || refreshing.current || !store.get().user) return;
-    refreshing.current = true; last.current = Date.now();
-    const r = await api.refresh();
-    refreshing.current = false;
-    if (r.status !== 200) return;
+  const refresh = useCallback(async arg => {
+    const force = arg && arg.force === true; // refresh используется и как обработчик события — аргумент может быть Event
+    if (busy.current || (refreshing.current > 0 && !force) || !store.get().user) return; // ручной повтор не ждёт фоновый запрос
+    refreshing.current++; last.current = Date.now();
+    const r = await api.refresh(force);
+    refreshing.current--;
+    if (r.status !== 200 || r.stale) return; // устаревший ответ не применялся — урок сравнивать не с чем
     const sid = getSessionId(), lesson = store.get().lesson;
     if (sid && lesson && lesson.id !== sid) onStaleLesson();
   }, [api, store, busy, getSessionId, onStaleLesson]);

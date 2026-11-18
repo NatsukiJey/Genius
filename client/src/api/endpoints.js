@@ -1,7 +1,7 @@
 // Тонкие обёртки над call(): названия понятны, адреса и тела — в одном месте.
 export const endpoints = call => ({
-  me: (quiet = true) => call('/api/me', undefined, quiet),
-  refresh: () => call('/api/me'),
+  me: (quiet = true, force = false) => call('/api/me', undefined, quiet, {force}),
+  refresh: (force = false) => call('/api/me', undefined, false, {force}),
   login: body => call('/api/login', body, true),
   register: body => call('/api/register', body, true),
   logout: () => call('/api/logout', {}, true),

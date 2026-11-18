@@ -1,6 +1,6 @@
 import {createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {createGameStore} from './gameStore.js';
-import {createApi, isAuthPath} from '../api/client.js';
+import {createApi, isAuthPath, DEFAULT_RETRY_DELAYS} from '../api/client.js';
 import {endpoints} from '../api/endpoints.js';
 
 const GameContext = createContext(null);
@@ -23,8 +23,8 @@ export function problemOf(r) {
 export function GameProvider({env, children}) {
   const [ctx] = useState(() => {
     const e = env || browserEnv(), store = createGameStore();
-    const api = createApi({store, navigate: e.navigate, channel: e.channel, getPath: e.getPath});
-    return {store, navigate: e.navigate, channel: e.channel, getPath: e.getPath, call: api.call, api: endpoints(api.call), busy: {current: false}, refreshRef: {current: null}};
+    const retryDelays = e.retryDelays ?? DEFAULT_RETRY_DELAYS, api = createApi({store, navigate: e.navigate, channel: e.channel, getPath: e.getPath, retryDelays});
+    return {store, retryDelays, navigate: e.navigate, channel: e.channel, getPath: e.getPath, call: api.call, api: endpoints(api.call), busy: {current: false}, refreshRef: {current: null}};
   });
   const {store, api, navigate, getPath, busy, refreshRef} = ctx;
   const snap = useSyncExternalStore(store.subscribe, store.get);
@@ -46,8 +46,8 @@ export function GameProvider({env, children}) {
 
   // Кнопка баннера «Qayta urinish». Если пользователя ещё нет, refresh() сразу вышел бы — поэтому отдельный путь.
   const retryNet = useCallback(async () => {
-    if (store.get().user) return refreshRef.current?.();
-    const r = await api.me(true);
+    if (store.get().user) return refreshRef.current?.({force: true});
+    const r = await api.me(true, true);                       // ручная проверка: успех гасит баннер, в т.ч. от неудавшейся записи
     if (r.netError) return;                                   // сервер всё ещё недоступен, баннер остаётся
     if (r.status === 401 && store.get().phase === 'auth') return; // форма входа уже на экране — не стираем введённое
     boot();

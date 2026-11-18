@@ -11,7 +11,7 @@ export function makeTiles(q, level) {
 
 // Подготовка текущего вопроса: чистим выбор/ввод/ответ.
 function prepare(s) {
-  const q = s.items[s.index], fresh = {...s, selected: null, chosen: [], text: '', answered: false, last: null, pending: false};
+  const q = s.items[s.index], fresh = {...s, selected: null, chosen: [], text: '', answered: false, last: null, pending: false, unconfirmed: null};
   if (s.phase === 'quiz' && q?.type === 'assemble') fresh.tiles = makeTiles(q, s.level);
   else fresh.tiles = [];
   return fresh;
@@ -31,14 +31,16 @@ export function lessonReducer(s, a) {
   }
   switch (a.type) {
     case 'startQuiz': return prepare({...s, phase: 'quiz'});
-    case 'select': return s.answered ? s : {...s, selected: a.index};
-    case 'pickTile': return s.answered || s.chosen.includes(a.index) ? s : {...s, chosen: [...s.chosen, a.index]};
-    case 'resetTiles': return s.answered ? s : {...s, chosen: []};
-    case 'setText': return s.answered ? s : {...s, text: a.text};
+    case 'select': return s.answered || s.unconfirmed ? s : {...s, selected: a.index};
+    case 'pickTile': return s.answered || s.unconfirmed || s.chosen.includes(a.index) ? s : {...s, chosen: [...s.chosen, a.index]};
+    case 'resetTiles': return s.answered || s.unconfirmed ? s : {...s, chosen: []};
+    case 'setText': return s.answered || s.unconfirmed ? s : {...s, text: a.text};
     case 'pending': return {...s, pending: a.value};
+    // Ответ ушёл, а ответа сервера нет: сохранён он или нет — неизвестно. Ввод замораживаем: повтор обязан быть тем же (index+given).
+    case 'unconfirmed': return {...s, pending: false, unconfirmed: {index: a.index, given: a.given}};
     case 'answered': {
       const res = a.result;
-      return {...s, pending: false, answered: true, last: res, correct: s.correct + (res.correct ? 1 : 0), mistakes: s.mistakes + (res.correct ? 0 : 1), typos: res.typo ? [...s.typos, res.typo] : s.typos};
+      return {...s, pending: false, unconfirmed: null, answered: true, last: res, correct: s.correct + (res.correct ? 1 : 0), mistakes: s.mistakes + (res.correct ? 0 : 1), typos: res.typo ? [...s.typos, res.typo] : s.typos};
     }
     case 'advance': return prepare({...s, index: s.index + 1});
     case 'toReview': return {...s, phase: 'review', pending: false};

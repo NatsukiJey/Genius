@@ -31,7 +31,7 @@ export function fakeServer(routes) {
 export function renderApp(opts = {}) {
   const channel = opts.channel ?? null, navigate = {replace: vi.fn(), reload: vi.fn()};
   if (opts.path) window.history.pushState({}, '', opts.path);
-  const env = {navigate, channel, getPath: () => window.location.pathname};
+  const env = {navigate, channel, getPath: () => window.location.pathname, retryDelays: opts.retryDelays ?? []}; // по умолчанию без автоповторов: старые тесты считают запросы
   const utils = render(<App env={env} />);
   return {...utils, navigate, user: opts.fake ? userEvent.setup({advanceTimers: vi.advanceTimersByTime}) : userEvent.setup()};
 }

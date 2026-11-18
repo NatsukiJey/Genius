@@ -37,7 +37,7 @@ test('5xx from the server is treated as "no connection" with the honest banner t
   fakeServer({'GET /api/me': () => fail ? {status: 502, data: {}} : {data: payload(st)}});
   renderApp(); await ready(); expect(banner().hidden).toBe(true);
   fail = true; window.dispatchEvent(new Event('focus'));
-  await waitFor(() => expect(banner().hidden).toBe(false)); expect(textOf(banner())).toBe('Server bilan aloqa yo‘q — natija saqlanmadi.Qayta urinish');
+  await waitFor(() => expect(banner().hidden).toBe(false)); expect(textOf(banner())).toBe('Aloqa vaqtincha yo‘q — ma’lumotlar yangilanmadi. Kiritganingiz joyida turibdi.Qayta urinish'); // фоновое чтение: другой текст, чем у неподтверждённой записи
   fail = false; await act(async () => { banner().querySelector('button').click(); });
   await waitFor(() => expect(banner().hidden).toBe(true));
 });
@@ -67,7 +67,7 @@ const pickAndCheck = async (r) => { await r.user.click(r.d.querySelector('.choic
 test('answer while offline: honest toast, no "correct" sound, nothing is marked answered, the button works again', async () => {
   const r = await inLesson({routes: {'POST /api/lesson/answer': () => new Error('offline')}});
   await r.user.keyboard('{Tab}'); await pickAndCheck(r);
-  expect(await screen.findByText('Server bilan aloqa yo‘q — javob saqlanmadi. Qayta urinib ko‘ring.')).toBeTruthy();
+  expect(await screen.findByText(/javob saqlanganmi, noma’lum/)).toBeTruthy();
   const btn = screen.getByRole('button', {name: 'Tekshirish →'}); expect(btn.disabled).toBe(false);
   expect(r.d.querySelector('#answer-feedback').textContent).toBe(''); expect(r.d.querySelector('.choice').disabled).toBe(false);
   expect(globalThis.__audios.filter(a => a.src.includes('correct') && a.plays).length).toBe(0);

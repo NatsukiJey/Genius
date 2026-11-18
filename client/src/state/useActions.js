@@ -2,6 +2,7 @@ import {useCallback} from 'react';
 import {givenOf} from './lessonReducer.js';
 import {answerOf} from '@shared/data.mjs';
 import {secondsLeft} from '../lib/format.js';
+import {sleep} from '../api/client.js';
 
 // Все действия пользователя, которые идут на сервер. Текст сообщений (узбекский) — как в оригинале.
 // Правила: перед ответом сервера ничего не «засчитываем»; нет сети -> честное сообщение; 409 -> данные берём заново.
@@ -73,19 +74,33 @@ export function useActions({game, sound, toast, session, sessionRef, dispatch, s
   const check = useCallback(async () => {
     const s = sessionRef.current;
     if (!s || s.answered || s.pending || game.busy.current) return;
-    const q = s.items[s.index], given = givenOf(s);
+    const q = s.items[s.index];
+    // Если прошлая отправка не подтверждена, шлём именно ЕЁ (тот же lessonId+index+given): сервер повторит результат без штрафа и второй награды.
+    const un = s.unconfirmed && s.unconfirmed.index === s.index ? s.unconfirmed : null, given = un ? un.given : givenOf(s);
     if (!given.trim()) { toast('Avval javob kiriting.'); return; }
     game.busy.current = true; dispatch({type: 'pending', value: true});
-    const r = await api.answer(s.id, s.index, given);
+    let r = await api.answer(s.id, s.index, given);
+    // Только ответ в уроке повторяем сами и только с теми же данными (идемпотентно на сервере). Остальные записи — никогда вслепую.
+    for (const d of game.retryDelays) {
+      if (!r.netError) break;
+      await sleep(d);
+      const cur = sessionRef.current;
+      if (!cur || cur.id !== s.id || cur.index !== s.index) { game.busy.current = false; return; } // урок закрыт/сменился, пока ждали
+      r = await api.answer(s.id, s.index, given);
+    }
     game.busy.current = false;
-    if (r.netError) { dispatch({type: 'pending', value: false}); toast('Server bilan aloqa yo‘q — javob saqlanmadi. Qayta urinib ko‘ring.'); return; }
-    if (r.status === 409) { closeAll(); toast('Dars boshqa joyda o‘zgargan. Ma’lumotlar yangilandi.'); return; }
+    if (r.netError) { dispatch({type: 'unconfirmed', index: s.index, given}); toast('Server javobi kelmadi — javob saqlanganmi, noma’lum. Qayta bossangiz, o‘sha javob xavfsiz qayta yuboriladi.'); return; }
+    if (r.status === 409) {
+      const L = r.data.lesson; // тот же урок, но сервер ушёл вперёд (напр. ответ уже принят): подтягиваем индекс, а не закрываем урок
+      if (L && L.id === s.id) { dispatch({type: 'open', lesson: L, resumed: true}); toast('Dars yangilandi: javob serverda allaqachon qayd etilgan.'); return; }
+      closeAll(); toast('Dars boshqa joyda o‘zgargan. Ma’lumotlar yangilandi.'); return;
+    }
     if (r.status !== 200) { dispatch({type: 'pending', value: false}); toast('Javob qabul qilinmadi.'); return; }
     const res = r.data.result;
     // Звук «правильно» — только ПОСЛЕ подтверждения сервера.
     if (res.correct) sound.play('correct');
     dispatch({type: 'answered', result: {...res, answer: res.answer || answerOf(q.type, q.word)}});
-  }, [sessionRef, game.busy, api, dispatch, toast, sound, closeAll]);
+  }, [sessionRef, game.busy, game.retryDelays, api, dispatch, toast, sound, closeAll]);
 
   const next = useCallback(() => {
     const s = sessionRef.current, res = s?.last;

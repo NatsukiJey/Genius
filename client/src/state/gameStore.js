@@ -1,7 +1,7 @@
 // Маленькое внешнее хранилище: копия серверного состояния для показа. Браузер ничего не сохраняет сам.
 // Нужно, чтобы async-действия читали СВЕЖЕЕ значение сразу после await (в замыкании React оно бывает старым).
 export function createGameStore() {
-  let snap = {phase: 'boot', user: null, state: null, today: null, lesson: null, clockOffset: 0, netDown: false};
+  let snap = {phase: 'boot', user: null, state: null, today: null, lesson: null, clockOffset: 0, netDown: false, netKind: null};
   const subs = new Set();
   const store = {
     get: () => snap,
