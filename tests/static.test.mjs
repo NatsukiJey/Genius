@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {boot, rawRequest} from './helpers.mjs';
@@ -118,4 +118,16 @@ test('package scripts and lockfile exist (npm ci reproducible build)', () => {
   for (const d of ['react', 'react-dom']) assert.ok(pkg.dependencies[d]); for (const d of ['vite', '@vitejs/plugin-react', 'vitest', 'jsdom', '@testing-library/react']) assert.ok(pkg.devDependencies[d], d);
   assert.ok(existsSync(path.join(root, 'package-lock.json')));
   const cfg = readRoot('vite.config.js'); assert.match(cfg, /5173/); assert.match(cfg, /'\/api': 'http:\/\/127\.0\.0\.1:4173'/); assert.match(cfg, /modulePreload: \{polyfill: false\}/);
+});
+
+test('repo scanner ignores generated dirs: broken symlinks inside tests/.data (browser profile) cannot crash it', () => {
+  const base = path.join(root, 'tests', '.data'); mkdirSync(base, {recursive: true});
+  const tmp = mkdtempSync(path.join(base, 'walk-'));
+  try {
+    mkdirSync(path.join(tmp, '.data', 'profile'), {recursive: true}); mkdirSync(path.join(tmp, 'src'));
+    symlinkSync('nonexistent-target', path.join(tmp, '.data', 'profile', 'SingletonCookie')); // битая ссылка, как у Chromium
+    symlinkSync('nonexistent-target', path.join(tmp, 'src', 'broken.js'));
+    writeFileSync(path.join(tmp, '.data', 'profile', 'x.js'), '// generated'); writeFileSync(path.join(tmp, 'src', 'a.js'), '// source');
+    assert.deepEqual(walk(tmp, f => /\.js$/.test(f)).map(f => path.relative(tmp, f)), [path.join('src', 'a.js')]);
+  } finally { rmSync(tmp, {recursive: true, force: true}); }
 });
