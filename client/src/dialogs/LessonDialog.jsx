@@ -3,6 +3,7 @@ import {enterSubmits} from '@shared/keys.mjs';
 import Modal from '../components/layout/Modal.jsx';
 import Stats from '../components/layout/Stats.jsx';
 import SoundButton from '../components/sound/SoundButton.jsx';
+import ThemeButton from '../components/theme/ThemeButton.jsx';
 import QuickBackground from '../components/sound/QuickBackground.jsx';
 import {useSound} from '../state/SoundContext.jsx';
 import WordIntro from './lesson/WordIntro.jsx';
@@ -33,6 +34,7 @@ export default function LessonDialog({session: s, dispatch, onCheck, onNext, onE
         <button type="button" className="close" data-action="exit" aria-label="Darsdan chiqish" onClick={onExit}>×</button>
         <Stats />
         <SoundButton where="lesson" />
+        <ThemeButton />
         <QuickBackground />
       </div>
       {s.phase === 'learn'

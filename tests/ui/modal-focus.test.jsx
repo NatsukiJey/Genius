@@ -18,8 +18,9 @@ test('closed sound panel: its sliders/buttons are NOT focusable; the Tab ring is
   const ring = focusables(d);
   for (const el of panel.querySelectorAll('input,button')) expect(ring.includes(el), 'hidden control must not be tabbable').toBe(false);
   // names() возвращает доступные имена (aria-label); id проверяем отдельно, чтобы покрытие осталось прежним.
-  expect(names(ring).slice(0, 4)).toEqual(['Darsdan chiqish', 'Ovoz sozlamalari', 'Fon musiqasi balandligi', 'Javobingiz']);
-  expect(ring.slice(2, 4).map(e => e.id)).toEqual(['snd-quick-background', 'answer']);
+  // Новая кнопка темы (Tungi rejim) — третья в шапке урока; остальной порядок и проверки прежние.
+  expect(names(ring).slice(0, 5)).toEqual(['Darsdan chiqish', 'Ovoz sozlamalari', 'Tungi rejim', 'Fon musiqasi balandligi', 'Javobingiz']);
+  expect(ring.slice(3, 5).map(e => e.id)).toEqual(['snd-quick-background', 'answer']);
   expect(ring.at(-1).getAttribute('data-action')).toBe('check');
 });
 

@@ -1,6 +1,7 @@
 import CourseSwitch from './CourseSwitch.jsx';
 import Stats from './Stats.jsx';
 import SoundButton from '../sound/SoundButton.jsx';
+import ThemeButton from '../theme/ThemeButton.jsx';
 
 export const PAGE_NAMES = {learn: 'O‘rganish', shop: 'Shop', account: 'Hisob', report: 'Bizga yozing'};
 
@@ -11,6 +12,7 @@ export default function Header({page, activeCourse, onChooseCourse, onHome}) {
       <div className="crumb">Shaxsiy o‘quv sayohating <span> / </span> <b>{PAGE_NAMES[page]}</b></div>
       <CourseSwitch active={activeCourse} onChoose={onChooseCourse} />
       <SoundButton where="main" />
+      <ThemeButton />
       <Stats />
     </header>
   );

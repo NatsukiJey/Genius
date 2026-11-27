@@ -1,4 +1,5 @@
 import {afterEach, beforeEach, vi} from 'vitest';
+import {fakeMedia} from './media.js';
 import {cleanup} from '@testing-library/react';
 
 // Каждый тест начинается с чистого браузера: пустой localStorage, адрес «/», без таймеров и без звука.
@@ -6,6 +7,8 @@ beforeEach(() => {
   localStorage.clear();
   window.history.pushState({}, '', '/');
   window.scrollTo = vi.fn();
+  document.documentElement.removeAttribute('data-theme');
+  window.matchMedia = fakeMedia(false);   // по умолчанию системная тема светлая; тесты темы подменяют
   globalThis.__audios = [];
   // Фальшивый Audio: запоминает, что и когда проиграли (в jsdom звука нет).
   globalThis.Audio = class FakeAudio {

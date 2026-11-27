@@ -1,0 +1,68 @@
+/* Тема. Подключается ПОСЛЕДНИМ. Светлая тема = прежние стили без изменений; тёмная переопределяет только цвета.
+   Все цвета текста подобраны под контраст >= 4.5:1 (проверяется tests/browser-e2e.mjs и tests/static.test.mjs). */
+:root{color-scheme:light}
+.auth-tools{gap:8px}
+/* кнопка темы добавила 40px в шапку: на узких планшетах (621-760px) шапка переносится, а не вылезает за экран */
+@media(min-width:621px) and (max-width:760px){header{flex-wrap:wrap;height:auto;min-height:86px;gap:8px 12px;padding:8px 25px}}
+:root[data-theme=dark]{color-scheme:dark;--ink:#e8f0ea;--muted:#a9b8ad;--green:#66bd55;--lime:#2b4a28;--line:#2c3b32;--paper:#0e1411;--orange:#edaa55;
+--surface:#161f1a;--surface2:#1c2821;--tint:#1b2b20;--border:#34473b;--accent:#9fd58b;--soft:#b6c6ba;--field:#121a15}
+:root[data-theme=dark] .mobile-brand span,:root[data-theme=dark] .brand-dot{color:#8fd37c}
+/* поверхности */
+:root[data-theme=dark] :is(.sidebar,header,.card,.icon-btn,.sound-panel,.tier-option,.word-card,.choice,.tiles button,.ru-key,.tier-select,.you-are-here,.float-label,.course-btn[aria-pressed=true]){background:var(--surface);border-color:var(--border)}
+:root[data-theme=dark] :is(.sidebar,header){border-color:var(--line)}
+:root[data-theme=dark] :is(.hero,.question-word,.tip-card,.sidebar-note,.course-switch,.exam-button,.google-btn,.close,.ru-key.wide-key){background:var(--tint);border-color:var(--border)}
+:root[data-theme=dark] :is(.auth-form input[type=text],.auth-form input[type=password],.answer-input,.report-form textarea){background:var(--field);border-color:var(--border);color:var(--ink)}
+:root[data-theme=dark] .dialog{border-color:var(--border);box-shadow:0 24px 100px #000a}
+:root[data-theme=dark] .overlay{background:#000000b3}
+:root[data-theme=dark] .sound-panel{box-shadow:0 12px 30px #0009}
+/* бордюры и тени «объёма» */
+:root[data-theme=dark] :is(.choice,.tiles button,.ru-key){border-bottom-color:#243329}
+:root[data-theme=dark] .float-label{box-shadow:0 6px 0 #1c2821}
+:root[data-theme=dark] .course-btn[aria-pressed=true]{box-shadow:0 2px 0 #243329;border-color:#5f8f4e}
+:root[data-theme=dark] :is(.course-btn:hover,.tier-option:hover,.word-card.revealed){background:#20352a;border-color:#5f8f4e}
+:root[data-theme=dark] .choice.selected{background:#22402a;border-color:#6aa354;color:#cdeec1}
+:root[data-theme=dark] .map:before{border-left-color:#33463a}
+:root[data-theme=dark] .orbit{border-color:#36493c}
+:root[data-theme=dark] .art-ground{background:#1c2821}
+:root[data-theme=dark] .assembled{border-bottom-color:#3f5646;color:var(--accent)}
+:root[data-theme=dark] .progress-track,:root[data-theme=dark] .quiz-progress,:root[data-theme=dark] .progress-track::-webkit-progress-bar,:root[data-theme=dark] .quiz-progress::-webkit-progress-bar{background:#2a3830}
+/* текст */
+:root[data-theme=dark] :is(.muted,.nav-caption,.crumb,.hero p,.hero-meta,.art-badge,.quiz-meta,.no-heart,.word-card span,.choice small,.card p,.goal small,.exam-note,.local-note,footer,.tier-option small,.profile small,.stats>span:last-child b){color:var(--muted)}
+:root[data-theme=dark] :is(.nav-item,.course-btn,.tier-select,.close,.google-btn,.week span,.nav-item em,.streak-number small){color:var(--soft)}
+:root[data-theme=dark] :is(.eyebrow,h1>span,.section-top h2 span,.text-link,.you-are-here,.label-b,.tier-option b,.auth-switch a,.forgot summary,.tip-card>span,.tip-card p,.tip-card small,.question-word,.word-card.revealed span,.course-btn[aria-pressed=true],.spark){color:var(--accent)}
+:root[data-theme=dark] .crumb b{color:var(--ink)}
+:root[data-theme=dark] .crumb span{color:#8b9b90}
+:root[data-theme=dark] .stats b{color:#e0c88e}
+:root[data-theme=dark] .stats>span:last-child b{color:#f2a199}
+:root[data-theme=dark] #auth-status{color:#f2a08a}
+:root[data-theme=dark] .eyebrow>span{background:#8fd37c}
+/* навигация, бренд, профиль */
+:root[data-theme=dark] .brand-icon{background:#2b4a28;color:#c2eab3}
+:root[data-theme=dark] .nav-item.active{background:#20352a;border-color:#3f6347;color:#c2eab3}
+:root[data-theme=dark] .nav-item em{background:#26332b}
+:root[data-theme=dark] .profile>span{background:#3a3424;color:#e6d09a}
+/* кнопки и карта уровней (белый текст на тёмно-зелёном >= 4.5:1) */
+:root[data-theme=dark] .primary{background:#2f7a2c;border-color:#3a8a36;border-bottom-color:#1f5a1f;color:#fff}
+:root[data-theme=dark] .chapter{background:#2f6a3a}
+:root[data-theme=dark] .level{background:#26332b;border-color:#17201b;box-shadow:0 5px 0 #1b261f;color:#a3b3a7}
+:root[data-theme=dark] .level.current{background:#357f31;color:#fff;border-color:#4f9a48;box-shadow:0 5px 0 #1f5a1f,0 0 0 7px #1d2c22}
+:root[data-theme=dark] .level.finished{background:#2f6a3a;color:#fff;border-color:#4a8a55;box-shadow:0 5px 0 #1f4a2a}
+:root[data-theme=dark] .exam-button{border-bottom-color:#3f6347}
+:root[data-theme=dark] .tiles button:disabled{opacity:.5}
+:root[data-theme=dark] .ru-key:disabled{opacity:.5}
+/* карточки */
+:root[data-theme=dark] .goal>span{background:#3a3320}
+:root[data-theme=dark] .week span{background:#232f28}
+:root[data-theme=dark] .week .today{background:#3a3320;color:#f0c878;border-color:#6b5a2a}
+:root[data-theme=dark] .streak-number{color:#e9aa6c}
+:root[data-theme=dark] .card-title>span{color:#d9bf7c}
+/* обратная связь, заметки, сообщения (смысл не только цветом: ✓ и текст «To‘g‘ri javob») */
+:root[data-theme=dark] .good{background:#1e3a24;color:#bdeaae}
+:root[data-theme=dark] .bad{background:#3d2b24;color:#f6bfa8}
+:root[data-theme=dark] .warn-note{background:#3a3320;border-color:#5e5028;color:#f0d79a}
+:root[data-theme=dark] .boot-detail{background:#ffffff14}
+:root[data-theme=dark] #toast{background:#223329;border:1px solid #4a6a58;color:#fff}
+:root[data-theme=dark] #banner{background:#a8452e}
+:root[data-theme=dark] #banner button{background:#fff;color:#7a2f1d}
+:root[data-theme=dark] .google-btn{border-color:#3f5246}
+:root[data-theme=dark] :is(.sound-row output,.quick-bg,.google-note,.auth-lead,.auth-form small,.auth-switch,.page-heading p,.report-form small,.sidebar-note p){color:var(--muted)}

@@ -1,6 +1,7 @@
 // Статика и безопасность React-сборки: сервер отдаёт ТОЛЬКО dist (из реальной сборки Vite), без legacy и без утечек.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
@@ -15,7 +16,7 @@ function build() {
   if (built) return built;
   execFileSync(process.execPath, [path.join(root, 'node_modules', 'vite', 'bin', 'vite.js'), 'build', '--outDir', BUILD, '--emptyOutDir'], {cwd: root, stdio: 'pipe'});
   const html = readFileSync(path.join(BUILD, 'index.html'), 'utf8');
-  return built = {html, js: html.match(/src="(\/assets\/[^"]+\.js)"/)[1], css: html.match(/href="(\/assets\/[^"]+\.css)"/)[1]};
+  return built = {html, js: html.match(/src="(\/assets\/index-[^"]+\.js)"/)[1], css: html.match(/href="(\/assets\/[^"]+\.css)"/)[1]};
 }
 
 test('real Vite build: index.html has no inline script/style/handlers; one JS + one CSS asset; audio copied', () => {
@@ -130,4 +131,46 @@ test('repo scanner ignores generated dirs: broken symlinks inside tests/.data (b
     writeFileSync(path.join(tmp, '.data', 'profile', 'x.js'), '// generated'); writeFileSync(path.join(tmp, 'src', 'a.js'), '// source');
     assert.deepEqual(walk(tmp, f => /\.js$/.test(f)).map(f => path.relative(tmp, f)), [path.join('src', 'a.js')]);
   } finally { rmSync(tmp, {recursive: true, force: true}); }
+});
+
+// ---- тёмная тема: boot-файл, порядок, MIME, CSS ----
+const BOOT = '/assets/theme-boot-v1.js', BOOT_SHA = 'b31b2fd86e92eb85b47abbbf304d7d69ceb350d190776c7dab78cb9cf43a93b8';
+test('theme boot: plain external script in <head> BEFORE css and the real index-* bundle; no inline code; hashed bundle is not confused with it', () => {
+  const {html, js} = build();
+  assert.match(js, /^\/assets\/index-/, 'test targets the real hashed bundle, not the first script');
+  const tags = [...html.matchAll(/<script\b[^>]*>/g)].map(m => m[0]);
+  assert.equal(tags.length, 2, 'boot + bundle only');
+  assert.equal(tags[0], `<script src="${BOOT}">`, 'plain classic script: no async/defer/module');
+  assert.ok(html.indexOf(BOOT) < html.indexOf(js) && html.indexOf(BOOT) < html.indexOf('rel="stylesheet"'), 'boot goes first');
+  assert.ok(html.indexOf(BOOT) < html.indexOf('</head>'), 'boot is in <head>');
+  assert.match(html, /<meta name="color-scheme" content="light dark">/);
+  assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i);
+});
+
+test('theme boot: file is shipped, versioned by name (content pinned: change it => rename to -v2), 0 CSP weakening', async () => {
+  build();
+  const file = path.join(BUILD, 'assets', 'theme-boot-v1.js');
+  assert.ok(existsSync(file));
+  const body = readFileSync(file);
+  assert.equal(createHash('sha256').update(body).digest('hex'), BOOT_SHA, 'theme-boot-v1.js changed without renaming (cache is immutable for a year)');
+  assert.ok(body.length < 1200 && !/\b(eval|innerHTML|fetch|XMLHttpRequest)\b/.test(body.toString()));
+  const env = await boot({distDir: BUILD});
+  try {
+    const r = await fetch(env.base + BOOT), t = await r.text();
+    assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'text/javascript; charset=utf-8'); assert.match(r.headers.get('cache-control'), /immutable/);
+    assert.match(t, /jenius\.theme/); assert.doesNotMatch(t, /<!doctype|<div id="root">/i, 'never the SPA fallback');
+    assert.equal((await fetch(env.base + '/')).headers.get('content-security-policy'), "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    assert.doesNotMatch((await fetch(env.base + '/theme-boot-v1.js')).headers.get('content-type') || '', /javascript/, 'a root-level script is not served as JS: that is why the file lives in /assets/');
+  } finally { await env.app.close(); }
+  const vj = JSON.parse(readRoot('vercel.json')); assert.ok(vj.rewrites.some(r => /assets\//.test(r.source)), 'vercel rewrite excludes /assets/');
+});
+
+test('theme.css: imported last; dark block defines every :root variable; light/dark color-scheme; file size', () => {
+  const css = readFileSync(path.join(root, 'client', 'src', 'styles', 'theme.css'), 'utf8'), app = readFileSync(path.join(root, 'client', 'src', 'App.css'), 'utf8');
+  const imports = [...app.matchAll(/@import '([^']+)'/g)].map(m => m[1]); assert.equal(imports.at(-1), './styles/theme.css');
+  const light = readFileSync(path.join(root, 'client', 'src', 'styles', 'base.css'), 'utf8').match(/:root\{([^}]*)\}/)[1];
+  const vars = [...light.matchAll(/(--[\w-]+):/g)].map(m => m[1]), dark = css.match(/:root\[data-theme=dark\]\{([^}]*)\}/)[1];
+  assert.ok(vars.length >= 7); for (const v of vars) assert.ok(new RegExp(v + ':').test(dark), 'dark defines ' + v);
+  assert.match(css, /:root\{color-scheme:light\}/); assert.match(dark, /color-scheme:dark/);
+  assert.ok(css.split('\n').length < 160);
 });

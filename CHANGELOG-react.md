@@ -36,3 +36,10 @@
 - Счётчики попыток в PostgreSQL (`throttle_events`, advisory-lock) — общие для всех экземпляров функции; локально остаются в памяти.
 - `migrations/001_init.sql` + `npm run db:migrate` (вручную, с advisory-lock и `schema_migrations`); необязательный `npm run db:import-sqlite`.
 - `vercel.json` (Vite, `dist`, `/api/*` раньше SPA-fallback), `VERCEL-SETUP.md`, `engines.node` = `26.x`, новые зависимости `pg` и (dev) `@electric-sql/pglite`.
+
+## Tungi rejim (dark mode)
+- Yorug‘/qorong‘i rejim tugmasi (🌙/☀️, `data-action="theme-toggle"`): asosiy sarlavha, kirish/ro‘yxatdan o‘tish, dars sarlavhasi. Tanlov faqat shu qurilmada (`localStorage` kaliti `jenius.theme`), serverga hech narsa yozilmaydi. Tanlanmaguncha tizim rejimi (`prefers-color-scheme`) amal qiladi; boshqa tab bilan sinxron; «Hisob» sahifasida «Tizim sozlamasiga qaytarish».
+- Oq chaqnashsiz yuklash: `client/public/assets/theme-boot-v1.js` (tashqi, versiyalangan fayl; inline kod va CSP o‘zgarmagan). Kesh `immutable`, shuning uchun fayl o‘zgarsa — `-v2` deb qayta nomlang va `client/index.html` + `tests/static.test.mjs` dagi SHA ni yangilang.
+- Ranglar: `styles/theme.css` (oxirgi import) faqat `:root[data-theme=dark]` ostida ranglarni almashtiradi; yorug‘ rejim avvalgidek. Matn kontrasti ≥ 4.5:1 (`npm run e2e:dark` o‘lchaydi, skrinshotlar bilan).
+- Testlar: `tests/ui/theme.test.jsx`, `tests/static.test.mjs` (boot tartibi/MIME/CSS), `tests/browser-dark.mjs` (haqiqiy Chromium).
+- Dars sarlavhasida yangi tugma bo‘lgani uchun `modal-focus` testida Tab tartibi yangilandi (Tungi rejim — 3-element).
